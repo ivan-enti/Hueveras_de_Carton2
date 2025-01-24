@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Hueveras de cartón 2</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.87.0/phaser.min.js"></script>
+		<script>
+		let canvas_w = 800;
+		let canvas_h = 450;
+
+		let config = {
+			width:canvas_w,
+			heigh:canvas_h,
+			scene: {
+				preload: precarga,
+				create: crea,
+				update: actualiza
+			}
+		};
+
+		let game = new Phaser.Game(config);
+		
+		let huevera_white, huevera_brown, huevera_gold;
+		let huevera_x = 100, huevera_y=200, huevera_y_dif=100;
+		let huevera_scale = 0.5;
+		let white = Phaser.Display.Color.GetColor(255,255,255);
+		let brown = Phaser.Display.Color.GetColor(205,133,63);
+		let gold = Phaser.Display.Color.GetColor(218,165,32);
+
+		function precarga (){
+			this.load.image('huevera', 'imgs/huevera.png');
+			this.load.image('huevo', 'imgs/huevo_blanco.png');
+		}
+
+		function crea (){
+			huevera_white = this.add.image(huevera_x, huevera_y, 'huevera');
+			huevera_white.setScale(huevera_scale);
+			huevera_white.setTint(white);
+			huevera_y += huevera_y_dif;
+
+			huevera_brown = this.add.image(huevera_x, huevera_y, 'huevera');
+			huevera_brown.setScale(huevera_scale);
+			huevera_brown.setTint(brown);
+			huevera_y += huevera_y_dif;
+
+			huevera_gold = this.add.image(huevera_x, huevera_y, 'huevera');
+			huevera_gold.setScale(huevera_scale);
+			huevera_gold.setTint(gold);
+
+			let huevo1 = this.add.image(400, 200, 'huevo')
+			huevo1.setScale(0.5);
+			huevo1.setTint(white);
+
+			let huevo2 = this.add.image(450, 200, 'huevo')
+			huevo2.setScale(0.5);
+			huevo2.setTint(brown);
+
+			let huevo3 = this.add.image(500, 200, 'huevo')
+			huevo3.setScale(0.5);
+			huevo3.setTint(gold);
+			this.cursors = this.input.keyboard.createCursorKeys();
+		}
+
+		function actualiza (){
+
+		}
+		</script>
+	</head>
+	<body>
+	</body>
+</html>
