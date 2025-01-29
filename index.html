@@ -10,7 +10,7 @@
 
 		let config = {
 			width:canvas_w,
-			heigh:canvas_h,
+			height:canvas_h,
 			scene: {
 				preload: precarga,
 				create: crea,
@@ -19,20 +19,38 @@
 		};
 
 		let game = new Phaser.Game(config);
+
+		let background_z = -2;
 		
 		let huevera_white, huevera_brown, huevera_gold;
-		let huevera_x = 100, huevera_y=200, huevera_y_dif=100;
+		let huevera_x = 100, huevera_y = canvas_h / 2 - 100, huevera_y_dif=100;
 		let huevera_scale = 0.5;
-		let white = Phaser.Display.Color.GetColor(255,255,255);
-		let brown = Phaser.Display.Color.GetColor(205,133,63);
-		let gold = Phaser.Display.Color.GetColor(218,165,32);
+
+		let huevos = [];
+		let huevo_x = 400, huevo_y = 200, huevo_x_dif = 50;
+		let huevo_scale = 0.5;
+		let huevo_shadow;
+
+
+		let white = Phaser.Display.Color.GetColor(255,255,255,255);
+		let brown = Phaser.Display.Color.GetColor(205,133,63,255);
+		let gold = Phaser.Display.Color.GetColor(218,165,32,255);
+		let colors = [white, brown, gold];
 
 		function precarga (){
 			this.load.image('huevera', 'imgs/huevera.png');
 			this.load.image('huevo', 'imgs/huevo_blanco.png');
+			this.load.image('background', 'imgs/grass_bg.png');
+			this.load.image('huevera_background', 'imgs/straw_bg.png');
 		}
 
 		function crea (){
+			let background_image = this.add.image(canvas_w / 2, canvas_h / 2, 'background');
+			background_image.setOrigin(0.5, 0.5);
+			background_image.setDepth(background_z);
+			let huevera_background_image = this.add.image(0, 0, 'huevera_background');
+
+
 			huevera_white = this.add.image(huevera_x, huevera_y, 'huevera');
 			huevera_white.setScale(huevera_scale);
 			huevera_white.setTint(white);
@@ -46,23 +64,56 @@
 			huevera_gold = this.add.image(huevera_x, huevera_y, 'huevera');
 			huevera_gold.setScale(huevera_scale);
 			huevera_gold.setTint(gold);
+			
+			huevo_shadow = this.add.image(-1000, -1000, 'huevo');
+			huevo_shadow.setScale(huevo_scale);
+			huevo_shadow.setTint('#000000');
+						
 
-			let huevo1 = this.add.image(400, 200, 'huevo')
-			huevo1.setScale(0.5);
-			huevo1.setTint(white);
+			for(let i = 0; i < 3; i++){
+				huevos[i] = this.add.image(huevo_x, huevo_y, 'huevo')
+				huevos[i].setScale(huevo_scale);
+				huevos[i].setTint(colors[i]);
+				huevos[i].setInteractive({draggable:true});
+				huevo_x += huevo_x_dif;
+			}
 
-			let huevo2 = this.add.image(450, 200, 'huevo')
-			huevo2.setScale(0.5);
-			huevo2.setTint(brown);
-
-			let huevo3 = this.add.image(500, 200, 'huevo')
-			huevo3.setScale(0.5);
-			huevo3.setTint(gold);
 			this.cursors = this.input.keyboard.createCursorKeys();
+			this.input.on("pointerdown", function(pointer, object, x, y){
+				object.x = x;
+				object.y = y;
+				huevo_shadow.x = x + 8;
+				huevo_shadow.y = y + 8;
+				object.setScale(huevo_scale * 1.5);
+				huevo_shadow.setScale(huevo_scale * 1.5);
+			});
+			this.input.on("drag", function(pointer, object, x, y){
+				object.x = x;
+				object.y = y;
+				huevo_shadow.x = x + 8;
+				huevo_shadow.y = y + 8;
+				object.setScale(huevo_scale * 1.5);
+				huevo_shadow.setScale(huevo_scale * 1.5);
+
+				if(Phaser.Geom.Intersects.RectangleToRectangle(huevera_white.getBounds(), object.getBounds())){
+					console.log("huevo en huevera blanca");
+				}
+				if(Phaser.Geom.Intersects.RectangleToRectangle(huevera_brown.getBounds(), object.getBounds())){
+					console.log("huevo en huevera marron");
+				}
+				if(Phaser.Geom.Intersects.RectangleToRectangle(huevera_gold.getBounds(), object.getBounds())){
+					console.log("huevo en huevera dorada");
+				}
+			});				
+			this.input.on("dragend", function(pointer, object, x, y){
+				object.setScale(huevo_scale);
+				huevo_shadow.x = -1000;
+				huevo_shadow.y = -1000;
+			});
 		}
 
 		function actualiza (){
-
+			
 		}
 		</script>
 	</head>
