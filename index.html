@@ -21,36 +21,54 @@
 		let game = new Phaser.Game(config);
 
 		let background_z = -2;
+		let huevera_background_rotation = 90;
+		let huevo_background_x = canvas_w / 2 + 100;
+		let huevo_background_scale = [0.75, 1];
 		
 		let huevera_white, huevera_brown, huevera_gold;
 		let huevera_x = 100, huevera_y = canvas_h / 2 - 100, huevera_y_dif=100;
 		let huevera_scale = 0.5;
 
-		let huevos = [];
-		let huevo_x = 400, huevo_y = 200, huevo_x_dif = 50;
-		let huevo_scale = 0.5;
-		let huevo_shadow;
-
+		let huevos = [], huevos_moving = [], huevos_num = 10; 
+		let huevo_scale = 0.75, huevo_drag_scale = huevo_scale * 1.5;
+		let huevo_shadow, huevo_hidden_x = -1000, huevo_hidden_y;
+		let egg_generating = false;
+		let huevo_time = 2000;
+		let huevo_x_min = 325, huevo_x_max = 675; huevo_drag_z = -5;
+		let huevo_y_start = -50, huevo_y_end = canvas_h + 50;
 
 		let white = Phaser.Display.Color.GetColor(255,255,255,255);
 		let brown = Phaser.Display.Color.GetColor(205,133,63,255);
-		let gold = Phaser.Display.Color.GetColor(218,165,32,255);
-		let colors = [white, brown, gold];
+		let gold = Phaser.Display.Color.GetColor(255,215,0,255);
+		let black = Phaser.Display.Color.GetColor(0,0,0,127);
+
+		let egg_percentages = [40, 40, 20];
+		let egg_colors = [white, brown, gold];
+
+		function createEgg(){};
 
 		function precarga (){
 			this.load.image('huevera', 'imgs/huevera.png');
 			this.load.image('huevo', 'imgs/huevo_blanco.png');
 			this.load.image('background', 'imgs/grass_bg.png');
 			this.load.image('huevera_background', 'imgs/straw_bg.png');
+			this.load.image('huevo_background', 'imgs/cinta.png');
 		}
 
 		function crea (){
+			//Backgrounds
 			let background_image = this.add.image(canvas_w / 2, canvas_h / 2, 'background');
 			background_image.setOrigin(0.5, 0.5);
 			background_image.setDepth(background_z);
-			let huevera_background_image = this.add.image(0, 0, 'huevera_background');
 
+			let huevera_background = this.add.image(huevera_x, canvas_h / 2, 'huevera_background');
+			huevera_background.setAngle(huevera_background_rotation);
+			huevera_background.setScale(huevera_scale);
 
+			let huevo_background = this.add.image(huevo_background_x, canvas_h / 2, 'huevo_background');
+			huevo_background.setScale(huevo_background_scale[0],huevo_background_scale[1]);
+
+			//Hueveras
 			huevera_white = this.add.image(huevera_x, huevera_y, 'huevera');
 			huevera_white.setScale(huevera_scale);
 			huevera_white.setTint(white);
@@ -64,36 +82,52 @@
 			huevera_gold = this.add.image(huevera_x, huevera_y, 'huevera');
 			huevera_gold.setScale(huevera_scale);
 			huevera_gold.setTint(gold);
-			
-			huevo_shadow = this.add.image(-1000, -1000, 'huevo');
-			huevo_shadow.setScale(huevo_scale);
-			huevo_shadow.setTint('#000000');
-						
 
-			for(let i = 0; i < 3; i++){
-				huevos[i] = this.add.image(huevo_x, huevo_y, 'huevo')
+			//Huevos
+			huevo_shadow = this.add.image(huevo_hidden_x, huevo_hidden_y, 'huevo');
+			huevo_shadow.setScale(huevo_scale);
+			huevo_shadow.setTint(black);
+			
+			let total_percent = egg_percentages.reduce(function(total, current){ 
+				return total + current;
+			}, 0);
+			for(let i = 0; i < huevos_num; i++){
+				huevos[i] = this.add.image(huevo_hidden_x, huevo_hidden_y, 'huevo')
 				huevos[i].setScale(huevo_scale);
-				huevos[i].setTint(colors[i]);
 				huevos[i].setInteractive({draggable:true});
-				huevo_x += huevo_x_dif;
+				//Select a random percent
+				let random = Phaser.Math.Between(0, total_percent - 1);
+				let color = egg_colors[0];
+				let tmp = 0;
+				for(let i = 0; i < egg_percentages.length; i++){
+					tmp += egg_percentages[i];
+					if(random < tmp){
+						color = egg_colors[i];
+						random = total_percent;
+					}
+				}
+				huevos[i].setTint(color);
 			}
 
+			//Inputs
 			this.cursors = this.input.keyboard.createCursorKeys();
 			this.input.on("pointerdown", function(pointer, object, x, y){
 				object.x = x;
 				object.y = y;
 				huevo_shadow.x = x + 8;
 				huevo_shadow.y = y + 8;
-				object.setScale(huevo_scale * 1.5);
-				huevo_shadow.setScale(huevo_scale * 1.5);
+				object.setScale(huevo_drag_scale, huevo_drag_scale);
+				huevo_shadow.setScale(huevo_drag_scale, huevo_drag_scale);
+				this.children.moveTo(object, huevo_drag_z);
+				huevo_shadow.setDepth(huevo_drag_z);
 			});
 			this.input.on("drag", function(pointer, object, x, y){
 				object.x = x;
 				object.y = y;
 				huevo_shadow.x = x + 8;
 				huevo_shadow.y = y + 8;
-				object.setScale(huevo_scale * 1.5);
-				huevo_shadow.setScale(huevo_scale * 1.5);
+				object.setScale(huevo_drag_scale, huevo_drag_scale);
+				huevo_shadow.setScale(huevo_drag_scale, huevo_drag_scale);
 
 				if(Phaser.Geom.Intersects.RectangleToRectangle(huevera_white.getBounds(), object.getBounds())){
 					console.log("huevo en huevera blanca");
@@ -107,13 +141,43 @@
 			});				
 			this.input.on("dragend", function(pointer, object, x, y){
 				object.setScale(huevo_scale);
-				huevo_shadow.x = -1000;
-				huevo_shadow.y = -1000;
+				huevo_shadow.x = huevo_hidden_x;
+				huevo_shadow.y = huevo_hidden_y;
 			});
+		}
+		function moveEgg(){
+			if(huevos.length <= 0)
+				return;
+			//Put the last egg in the huevos_moving
+			huevos_moving.push(huevos.shift());
+			//Put the egg in a random x and the corresponent y position
+			random = Phaser.Math.Between(huevo_x_min, huevo_x_max);
+			let last_element = huevos_moving.length - 1;
+			huevos_moving[last_element].setPosition(random, huevo_y_start);
+			console.log("huevo");
+
+			egg_generating = false;
 		}
 
 		function actualiza (){
-			
+			if(!egg_generating){
+				setTimeout(moveEgg, huevo_time);
+				egg_generating = true;
+			}
+			if(huevos_moving.length <= 0)
+				return;
+			for(let i = 0; i<huevos_moving.length; i++){
+				if(huevos_moving[i].scale == huevo_drag_scale){
+					huevos_moving.splice(i, 1);
+					break;
+				}
+				huevos_moving[i].y += 1;
+				if(huevos_moving[i].y >= huevo_y_end){
+					let huevo = huevos_moving.splice(i, 1);
+					huevos.push(huevo[0]);
+					console.log("me falta un huevo");
+				}
+			}
 		}
 		</script>
 	</head>
