@@ -13,6 +13,9 @@ let config = {
 
 let game = new Phaser.Game(config);
 
+let game_over = false;
+let game_over_text;
+
 let bg_music, game_over_music;
 let good_sfx, bad_sfx, pickup_sfx;
 
@@ -30,7 +33,7 @@ let huevera_white, huevera_brown, huevera_gold;
 let huevera_x = 100, huevera_y = canvas_h / 2 - 100, huevera_y_dif=100;
 let huevera_scale = 0.5;
 
-let huevos = [], huevos_moving = [];
+let huevos = []; //huevos_moving = [];
 let huevo_shadow;
 let huevo_x_min = 325, huevo_x_max = 675;
 let huevo_y_start = -50, huevo_y_end = canvas_h + 50;
@@ -91,19 +94,35 @@ class Huevo {
 }
 
 let text_timer;
-let interval_timer;
 let timer = 60;
 let timer_y = 50;
 let timer_size = '50px';
-function updateTimer(){
-	timer--;
+
+let interval_timer, interval_huevo;
+
+function gameOver(){
+	game_over = true;
+	game_over_text.setVisible(true);
+	bg_music.stop();
+	game_over_music.play();
+	timer = 0;
 	text_timer.setText(timer);
+	if(huevos.length > 0){
+		for(let i = 0; i < huevos.length; i++){
+			huevos[i].destroy();
+			huevos.splice(i, 1);
+		}
+	}
+}
+function updateTimer(){
 	if(timer <= 0){
-		bg_music.stop();
-		game_over_music.play();
+		if(!game_over)
+			gameOver();
 		clearInterval(interval_timer);
 		return;
 	}
+	timer--;
+	text_timer.setText(timer);
 }
 function createHuevera(scene, color){
 	huevera = scene.add.image(huevera_x, huevera_y, 'huevera');
@@ -113,6 +132,10 @@ function createHuevera(scene, color){
 	return huevera;
 }
 function createHuevo(scene){
+	if(game_over){
+		clearInterval(interval_huevo);
+		return;
+	}
 	huevo_x = Phaser.Math.Between(huevo_x_min, huevo_x_max);
 	let huevo = new Huevo(scene, huevo_x, huevo_y_start, 'huevo');
 	huevos.push(huevo);
@@ -156,6 +179,10 @@ function crea (){
 	text_timer = this.add.text(canvas_w / 2, timer_y, timer, {fontSize: timer_size});
 	text_timer.setOrigin(0.5, 0.5);
 
+	game_over_text = this.add.text(canvas_w / 2, canvas_h / 2, "GAME OVER", {fontSize: '75px'});
+	game_over_text.setOrigin(0.5, 0.5);
+	game_over_text.setVisible(false);
+
 	//Hueveras
 	huevera_white = createHuevera(this, white);
 	huevera_brown = createHuevera(this, brown);
@@ -197,12 +224,24 @@ function crea (){
 				}
 			}
 		}
+		let points = 0;
+		huevo_type.map(function(type){
+			if(object.tintTopLeft == type.color){
+				points = type.points;
+			}
+		});
 		if(touch){
 			if(correct_touch){
 				good_sfx.play();
+				timer += points;
+				text_timer.setText(timer);
 			}
 			else{
 				bad_sfx.play();
+				timer -= points;
+				text_timer.setText(timer);
+				if(timer < 0 && !game_over)
+					gameOver();
 			}
 			object.destroy();
 			huevo_shadow.x = huevo_hidden_x;
@@ -215,9 +254,12 @@ function crea (){
 		huevo_shadow.y = huevo_hidden_y;
 	});
 	interval_timer = setInterval(updateTimer, 1000);
-	setInterval(createHuevo, huevo_time, this);
+	interval_huevo = setInterval(createHuevo, huevo_time, this);
 }
 function actualiza (){
+	if(game_over){
+		return;
+	}
 	for(let i = 0; i < huevos.length; i++){
 		huevos[i].move();
 		if(huevos[i].checkY()){
