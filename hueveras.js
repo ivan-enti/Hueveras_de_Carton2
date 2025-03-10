@@ -14,7 +14,12 @@ let config = {
 let game = new Phaser.Game(config);
 
 let game_over = false;
-let game_over_text;
+let game_over_txt;
+
+let points = 0;
+let points_txt;
+let points_txt_y = 50;
+let points_txt_size = '25px';
 
 let bg_music, game_over_music;
 let good_sfx, bad_sfx, pickup_sfx;
@@ -23,6 +28,7 @@ let white = Phaser.Display.Color.GetColor(255,255,255,255);
 let brown = Phaser.Display.Color.GetColor(205,133,63,255);
 let gold = Phaser.Display.Color.GetColor(255,215,0,255);
 let black = Phaser.Display.Color.GetColor(0,0,0,127);
+let red = Phaser.Display.Color.GetColor(255,0,0,255);
 
 let bg_z = -2;
 let huevera_bg_rotation = 90;
@@ -44,13 +50,23 @@ let huevo_time = 2000;
 let huevo_offset = 8;
 
 let huevo_type = [
-	{color: white, percent: 35, points: 10, speed: 1.25},
-	{color: brown, percent: 50, points: 5, speed: 1},
-	{color: gold, percent: 15, points: 25, speed: 2}
+	{color: white, percent: 35,
+	time_up: 5, time_down: 3,
+	points: 10, speed: 1.25},
+
+	{color: brown, percent: 50, 
+	time_up: 3, time_down: 3,
+	points: 5, speed: 1},
+
+	{color: gold, percent: 15, 
+	time_up: 10, time_down: 5,
+	points: 25, speed: 2}
 ];
 let total_percent = 100;
 class Huevo {
 	image;
+	time_up;
+	time_down;
 	points;
 	speed;
 	constructor(scene, posX, posY, image_name){
@@ -73,6 +89,8 @@ class Huevo {
 		
 		this.points = huevo_type[index_type].points;
 		this.speed = huevo_type[index_type].speed;
+		this.time_up = huevo_type[index_type].time_up;
+		this.time_down = huevo_type[index_type].time_down;
 	}
 	move(){
 		if(this.image.scale == huevo_drag_scale){
@@ -80,10 +98,6 @@ class Huevo {
 		}
 
 		this.image.y += this.speed;
-
-		if(this.image.y >= huevo_y_end){
-			this.image.destroy();
-		}
 	}
 	checkY(){
 		return this.image.y >= huevo_y_end;
@@ -97,32 +111,52 @@ let text_timer;
 let timer = 60;
 let timer_y = 50;
 let timer_size = '50px';
+let danger_time = 10;
+let normal_rate = 1.0, danger_rate = 2.0;
 
 let interval_timer, interval_huevo;
 
 function gameOver(){
 	game_over = true;
-	game_over_text.setVisible(true);
+	//Set points and game_over text visible
+	game_over_txt.setVisible(true);
+	points_txt.setText(points_txt.text + points);
+	points_txt.setVisible(true);
+	//Change music
 	bg_music.stop();
 	game_over_music.play();
-	timer = 0;
+	//Set timer = 0
+	timer = 0;	
 	text_timer.setText(timer);
+	/*
 	if(huevos.length > 0){
 		for(let i = 0; i < huevos.length; i++){
 			huevos[i].destroy();
 			huevos.splice(i, 1);
 		}
 	}
+	*/
 }
 function updateTimer(){
 	if(timer <= 0){
+		text_timer.setTint(red);
 		if(!game_over)
 			gameOver();
 		clearInterval(interval_timer);
 		return;
 	}
+
 	timer--;
 	text_timer.setText(timer);
+
+	if(timer <= danger_time){
+		bg_music.setRate(danger_rate);
+		text_timer.setTint(red);
+	}
+	else{
+		bg_music.setRate(normal_rate);
+		text_timer.setTint(white);
+	}
 }
 function createHuevera(scene, color){
 	huevera = scene.add.image(huevera_x, huevera_y, 'huevera');
@@ -175,13 +209,20 @@ function crea (){
 
 	let huevo_bg = this.add.image(huevo_bg_x, canvas_h / 2, 'huevo_bg');
 	huevo_bg.setScale(huevo_bg_scale[0],huevo_bg_scale[1]);
-
+	
+	//Texts
 	text_timer = this.add.text(canvas_w / 2, timer_y, timer, {fontSize: timer_size});
 	text_timer.setOrigin(0.5, 0.5);
 
-	game_over_text = this.add.text(canvas_w / 2, canvas_h / 2, "GAME OVER", {fontSize: '75px'});
-	game_over_text.setOrigin(0.5, 0.5);
-	game_over_text.setVisible(false);
+	game_over_txt = this.add.text(canvas_w / 2, canvas_h / 2, "GAME OVER", {fontSize: '75px'});
+	game_over_txt.setOrigin(0.5, 0.5);
+	game_over_txt.setVisible(false);
+
+	points_txt_y = game_over_txt.y + points_txt_y;
+
+	points_txt = this.add.text(game_over_txt.x, points_txt_y, "points: ", {fontSize: points_txt_size});
+	points_txt.setOrigin(0.5, 0.5);
+	points_txt.setVisible(false);
 
 	//Hueveras
 	huevera_white = createHuevera(this, white);
@@ -197,6 +238,8 @@ function crea (){
 	//Inputs
 	this.cursors = this.input.keyboard.createCursorKeys();
 	this.input.on("pointerdown", function(pointer, object, x, y){
+		if(game_over)
+			return;
 		if(object[0] == null)
 			return;
 		object.x = x;
@@ -208,47 +251,88 @@ function crea (){
 		pickup_sfx.play();
 	});
 	this.input.on("drag", function(pointer, object, x, y){
+		if(game_over)
+			return;
+		//Put object on the cursor position
 		object.x = x;
 		object.y = y;
 		huevo_shadow.x = x + huevo_offset;
 		huevo_shadow.y = y + huevo_offset;
 
+		//Check if the object collided with a huevera
 		let hueveras = [huevera_white, huevera_brown, huevera_gold];
+		let check_colision = [];
 		let touch = false;
 		let correct_touch = false;
 		for(let i = 0; i < hueveras.length; i++){
 			if(Phaser.Geom.Intersects.RectangleToRectangle(hueveras[i].getBounds(), object.getBounds())){
 				touch = true;
+				let dif_y = hueveras[i].y - object.y;
+				if(dif_y < 0)
+					dif_y *= -1
+
 				if(object.tintTopLeft == hueveras[i].tintTopLeft){
-					correct_touch = true;
+					check_colision.push({good: true, dif_y: dif_y});
+				}
+				else{
+					check_colision.push({good: false, dif_y: dif_y});
 				}
 			}
 		}
-		let points = 0;
+		//If there is no touch return
+		if(check_colision.length <= 0)
+			return
+
+		//Check if object only collided with good huevera
+		let good_huevera = false;
+		if(check_colision.length == 1){
+			good_huevera = check_colision[0].good;
+		} //Else check what huevera has the lower diference to the object
+		else{
+			let closest_huevera = check_colision[0];
+			check_colision.map(function(colision){
+				if(colision.dif_y < closest_huevera.dif_y){
+					closest_huevera = colision;
+				}
+			});
+			good_huevera = closest_huevera.good;
+		}
+
+		//Check if good_huevera
 		huevo_type.map(function(type){
 			if(object.tintTopLeft == type.color){
-				points = type.points;
+				if(good_huevera){
+					good_sfx.play();
+					timer += type.time_up;
+					text_timer.setText(timer);
+					points += type.points;
+				}
+				else{
+					bad_sfx.play();
+					timer -= type.time_down;
+					text_timer.setText(timer);
+					if(timer < 0 && !game_over)
+						gameOver();
+				}
 			}
 		});
-		if(touch){
-			if(correct_touch){
-				good_sfx.play();
-				timer += points;
-				text_timer.setText(timer);
-			}
-			else{
-				bad_sfx.play();
-				timer -= points;
-				text_timer.setText(timer);
-				if(timer < 0 && !game_over)
-					gameOver();
-			}
-			object.destroy();
-			huevo_shadow.x = huevo_hidden_x;
-			huevo_shadow.y = huevo_hidden_y;
+
+		//Check timer
+		if(timer <= danger_time){
+			bg_music.setRate(danger_rate);
+			text_timer.setTint(red);
 		}
+		else{
+			bg_music.setRate(normal_rate);
+			text_timer.setTint(white);
+		}
+		object.destroy();
+		huevo_shadow.x = huevo_hidden_x;
+		huevo_shadow.y = huevo_hidden_y;
 	});				
 	this.input.on("dragend", function(pointer, object, x, y){
+		if(game_over)
+			return;
 		object.setScale(huevo_scale);
 		huevo_shadow.x = huevo_hidden_x;
 		huevo_shadow.y = huevo_hidden_y;
@@ -260,6 +344,7 @@ function actualiza (){
 	if(game_over){
 		return;
 	}
+
 	for(let i = 0; i < huevos.length; i++){
 		huevos[i].move();
 		if(huevos[i].checkY()){
@@ -267,24 +352,5 @@ function actualiza (){
 			huevos.splice(i, 1);
 		}
 	}
-	/*
-	if(!egg_generating){
-		setTimeout(moveEgg, huevo_time);
-		egg_generating = true;
-	}
-	if(huevos_moving.length <= 0)
-		return;
-	for(let i = 0; i<huevos_moving.length; i++){
-		if(huevos_moving[i].scale == huevo_drag_scale){
-			huevos_moving.splice(i, 1);
-			break;
-		}
-		huevos_moving[i].y += 1;
-		if(huevos_moving[i].y >= huevo_y_end){
-			let huevo = huevos_moving.splice(i, 1);
-			huevos.push(huevo[0]);
-		}
-	}
-	*/
 }
 
